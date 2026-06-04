@@ -35,6 +35,7 @@ const defaultSubtitleStyle = {
   fontSize: 42
 };
 const exportResolutions = {
+  original: { label: "原檔案解析度", width: null, height: null, videoBitsPerSecond: null },
   "720p": { label: "720P", width: 1280, height: 720, videoBitsPerSecond: 4500000 },
   "1080p": { label: "1080P", width: 1920, height: 1080, videoBitsPerSecond: 8000000 }
 };
@@ -174,6 +175,21 @@ function findSupportedRecorderFormat(preferredFormat) {
   throw new Error("瀏覽器不支援可用的影片匯出格式。");
 }
 
+function resolveExportResolution(selectedResolution, clip) {
+  if (selectedResolution === "original") {
+    const width = Math.max(1, Math.round(clip?.width || exportResolutions["720p"].width));
+    const height = Math.max(1, Math.round(clip?.height || exportResolutions["720p"].height));
+    return {
+      label: `原檔 ${width}x${height}`,
+      width,
+      height,
+      videoBitsPerSecond: clamp(Math.round(width * height * 4), 4500000, 16000000)
+    };
+  }
+
+  return exportResolutions[selectedResolution] || exportResolutions["720p"];
+}
+
 function waitForVideoReady(video) {
   return new Promise((resolve, reject) => {
     if (video.readyState >= 2 && video.videoWidth > 0) {
@@ -228,6 +244,8 @@ function loadClip(file) {
         url,
         name: file.name,
         duration: video.duration || 0,
+        width: video.videoWidth || 0,
+        height: video.videoHeight || 0,
         start: 0,
         end: video.duration || 0
       });
@@ -490,7 +508,7 @@ export default function App() {
     let recorder = null;
 
     try {
-      const output = exportResolutions[exportResolution] || exportResolutions["720p"];
+      const output = resolveExportResolution(exportResolution, clips[0]);
       const recorderFormat = findSupportedRecorderFormat(exportFormat);
       const formatChanged = recorderFormat.extension !== exportFormat;
       setDownloadFileName(`剪輯完成影片-${output.label}.${recorderFormat.extension}`);
@@ -1013,7 +1031,7 @@ export default function App() {
                 >
                   {Object.entries(exportResolutions).map(([value, option]) => (
                     <option key={value} value={value}>
-                      {option.label} ({option.width}x{option.height})
+                      {option.width && option.height ? `${option.label} (${option.width}x${option.height})` : option.label}
                     </option>
                   ))}
                 </select>
