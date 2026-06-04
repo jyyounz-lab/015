@@ -10,8 +10,8 @@ from typing import Iterable
 
 DEFAULT_STYLE = {
     "fontFamily": '"Microsoft JhengHei", Arial, sans-serif',
-    "color": "#ffffff",
-    "backgroundColor": "#000000cc",
+    "color": "#000000",
+    "backgroundColor": "transparent",
     "fontSize": 42,
 }
 

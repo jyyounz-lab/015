@@ -30,8 +30,8 @@ const fontOptions = [
 ];
 const defaultSubtitleStyle = {
   fontFamily: fontOptions[0].value,
-  color: "#ffffff",
-  backgroundColor: "#000000cc",
+  color: "#000000",
+  backgroundColor: "transparent",
   fontSize: 42
 };
 
@@ -230,10 +230,11 @@ function drawRoundRect(ctx, x, y, w, h, r) {
 
 function drawSubtitle(ctx, subtitle, width, height) {
   if (!subtitle?.text) return;
-  const fontFamily = subtitle.fontFamily || fontOptions[0].value;
-  const fontSize = seconds(subtitle.fontSize) || 42;
-  const textColor = subtitle.color || "#ffffff";
-  const backgroundColor = subtitle.backgroundColor || "rgba(0,0,0,0.68)";
+  const fontFamily = subtitle.fontFamily || defaultSubtitleStyle.fontFamily;
+  const fontSize = seconds(subtitle.fontSize) || defaultSubtitleStyle.fontSize;
+  const textColor = subtitle.color || defaultSubtitleStyle.color;
+  const backgroundColor = subtitle.backgroundColor || defaultSubtitleStyle.backgroundColor;
+  const hasBackground = !["transparent", "rgba(0,0,0,0)", "#00000000"].includes(String(backgroundColor).toLowerCase());
   ctx.save();
   ctx.font = `700 ${fontSize}px ${fontFamily}`;
   ctx.textAlign = "center";
@@ -243,12 +244,11 @@ function drawSubtitle(ctx, subtitle, width, height) {
   const boxHeight = fontSize + 34;
   const x = (width - boxWidth) / 2;
   const y = height - boxHeight - 58;
-  drawRoundRect(ctx, x, y, boxWidth, boxHeight, 12);
-  ctx.fillStyle = backgroundColor;
-  ctx.fill();
-  ctx.strokeStyle = "rgba(0,0,0,0.78)";
-  ctx.lineWidth = 5;
-  ctx.strokeText(subtitle.text, width / 2, y + boxHeight / 2);
+  if (hasBackground) {
+    drawRoundRect(ctx, x, y, boxWidth, boxHeight, 12);
+    ctx.fillStyle = backgroundColor;
+    ctx.fill();
+  }
   ctx.fillStyle = textColor;
   ctx.fillText(subtitle.text, width / 2, y + boxHeight / 2);
   ctx.restore();
@@ -921,10 +921,7 @@ export default function App() {
                     text: "新字幕",
                     start: Math.max(0, Number(timelinePreviewTime.toFixed(1))),
                     end: Math.max(0.1, Number((timelinePreviewTime + 3).toFixed(1))),
-                    fontFamily: fontOptions[0].value,
-                    color: "#ffffff",
-                    backgroundColor: "#000000cc",
-                    fontSize: 42
+                    ...defaultSubtitleStyle
                   }
                 ])
               }
