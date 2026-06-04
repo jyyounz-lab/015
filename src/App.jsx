@@ -35,7 +35,7 @@ const defaultSubtitleStyle = {
   fontSize: 42
 };
 const exportResolutions = {
-  original: { label: "原檔案解析度", width: null, height: null, videoBitsPerSecond: null },
+  original: { label: "原檔案解析度（第一段影片）", width: null, height: null, videoBitsPerSecond: null },
   "720p": { label: "720P", width: 1280, height: 720, videoBitsPerSecond: 4500000 },
   "1080p": { label: "1080P", width: 1920, height: 1080, videoBitsPerSecond: 8000000 }
 };
@@ -353,7 +353,7 @@ export default function App() {
   const [downloadUrl, setDownloadUrl] = useState("");
   const [downloadFileName, setDownloadFileName] = useState("剪輯完成影片.mp4");
   const [exportFormat, setExportFormat] = useState("mp4");
-  const [exportResolution, setExportResolution] = useState("720p");
+  const [exportResolution, setExportResolution] = useState("original");
   const [exporting, setExporting] = useState(false);
   const [exportPercent, setExportPercent] = useState(0);
 
@@ -375,6 +375,7 @@ export default function App() {
     subtitles.find((subtitle) => time >= seconds(subtitle.start) && time <= seconds(subtitle.end));
   const timelinePreviewTime = activeClip ? activeClipOffset + Math.max(0, previewTime - activeClip.start) : 0;
   const currentSubtitle = activeSubtitle(timelinePreviewTime);
+  const selectedOutput = resolveExportResolution(exportResolution, clips[0]);
 
   async function handleUpload(event) {
     const files = Array.from(event.target.files || []).filter((file) => file.type.startsWith("video/"));
@@ -1037,6 +1038,9 @@ export default function App() {
                 </select>
               </label>
             </div>
+            <p className="exportHint">
+              目前輸出：{selectedOutput.label} ({selectedOutput.width}x{selectedOutput.height})
+            </p>
           </section>
 
           <div className="downloadBox">
