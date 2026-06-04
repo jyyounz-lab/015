@@ -28,12 +28,122 @@ const fontOptions = [
   { label: "Georgia", value: "Georgia, serif" },
   { label: "Courier", value: '"Courier New", monospace' }
 ];
+const defaultSubtitleStyle = {
+  fontFamily: fontOptions[0].value,
+  color: "#ffffff",
+  backgroundColor: "#000000cc",
+  fontSize: 42
+};
 
 function timeLabel(value) {
   const safe = Math.max(0, seconds(value));
   const min = Math.floor(safe / 60);
   const sec = Math.floor(safe % 60);
   return `${min}:${String(sec).padStart(2, "0")}`;
+}
+
+function srtTimeToSeconds(value) {
+  const match = String(value || "").trim().match(/(\d+):(\d+):(\d+)(?:[,.](\d+))?/);
+  if (!match) return 0;
+  const [, hours, minutes, secs, millis = "0"] = match;
+  return (
+    Number(hours) * 3600 +
+    Number(minutes) * 60 +
+    Number(secs) +
+    Number(millis.padEnd(3, "0").slice(0, 3)) / 1000
+  );
+}
+
+function secondsToSrtTime(value) {
+  const totalMs = Math.max(0, Math.round(seconds(value) * 1000));
+  const hours = Math.floor(totalMs / 3600000);
+  const minutes = Math.floor((totalMs % 3600000) / 60000);
+  const secs = Math.floor((totalMs % 60000) / 1000);
+  const millis = totalMs % 1000;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")},${String(millis).padStart(3, "0")}`;
+}
+
+function normalizeSubtitle(item, index = 0) {
+  return {
+    id: id(),
+    text: String(item?.text || item?.content || `字幕 ${index + 1}`),
+    start: seconds(item?.start ?? item?.startTime ?? item?.from),
+    end: Math.max(seconds(item?.end ?? item?.endTime ?? item?.to), seconds(item?.start ?? item?.startTime ?? item?.from) + 0.1),
+    fontFamily: item?.fontFamily || defaultSubtitleStyle.fontFamily,
+    color: item?.color || defaultSubtitleStyle.color,
+    backgroundColor: item?.backgroundColor || defaultSubtitleStyle.backgroundColor,
+    fontSize: seconds(item?.fontSize) || defaultSubtitleStyle.fontSize
+  };
+}
+
+function parseSrt(text) {
+  return String(text || "")
+    .replace(/\r/g, "")
+    .split(/\n{2,}/)
+    .map((block, index) => {
+      const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
+      const timeLineIndex = lines.findIndex((line) => line.includes("-->"));
+      if (timeLineIndex < 0) return null;
+      const [startRaw, endRaw] = lines[timeLineIndex].split("-->").map((part) => part.trim());
+      const subtitleText = lines.slice(timeLineIndex + 1).join("\n").trim();
+      if (!subtitleText) return null;
+      return normalizeSubtitle(
+        {
+          text: subtitleText,
+          start: srtTimeToSeconds(startRaw),
+          end: srtTimeToSeconds(endRaw)
+        },
+        index
+      );
+    })
+    .filter(Boolean);
+}
+
+function parseSubtitleJson(text) {
+  const data = JSON.parse(text);
+  const rows = Array.isArray(data) ? data : data.subtitles;
+  if (!Array.isArray(rows)) {
+    throw new Error("JSON 需要是字幕陣列，或包含 subtitles 陣列。");
+  }
+  return rows.map(normalizeSubtitle);
+}
+
+function subtitlesToSrt(rows) {
+  return rows
+    .map((subtitle, index) => {
+      const text = String(subtitle.text || "").replace(/\r/g, "").trim();
+      return `${index + 1}\n${secondsToSrtTime(subtitle.start)} --> ${secondsToSrtTime(subtitle.end)}\n${text}`;
+    })
+    .join("\n\n");
+}
+
+function subtitlesToJson(rows) {
+  return JSON.stringify(
+    {
+      version: 1,
+      subtitles: rows.map(({ text, start, end, fontFamily, color, backgroundColor, fontSize }) => ({
+        text,
+        start: seconds(start),
+        end: seconds(end),
+        fontFamily,
+        color,
+        backgroundColor,
+        fontSize: seconds(fontSize) || defaultSubtitleStyle.fontSize
+      }))
+    },
+    null,
+    2
+  );
+}
+
+function downloadTextFile(filename, content, type = "text/plain;charset=utf-8") {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function loadClip(file) {
@@ -149,10 +259,7 @@ export default function App() {
       text: "第一段字幕",
       start: 0,
       end: 3,
-      fontFamily: fontOptions[0].value,
-      color: "#ffffff",
-      backgroundColor: "rgba(0,0,0,0.68)",
-      fontSize: 42
+      ...defaultSubtitleStyle
     }
   ]);
   const [status, setStatus] = useState("尚未匯出");
@@ -237,6 +344,33 @@ export default function App() {
     const video = previewRef.current;
     if (video) video.currentTime = nextTime;
     setPreviewTime(nextTime);
+  }
+
+  async function handleSubtitleImport(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const ext = file.name.toLowerCase().split(".").pop();
+      const imported = ext === "json" ? parseSubtitleJson(text) : parseSrt(text);
+      if (!imported.length) {
+        throw new Error("沒有讀到有效字幕。");
+      }
+      setSubtitles(imported);
+      setStatus(`已匯入 ${imported.length} 段字幕。`);
+    } catch (error) {
+      setStatus(`字幕匯入失敗：${error.message || "格式不正確"}`);
+    } finally {
+      event.target.value = "";
+    }
+  }
+
+  function downloadSubtitles(format) {
+    if (format === "json") {
+      downloadTextFile("字幕備份.json", subtitlesToJson(subtitles), "application/json;charset=utf-8");
+      return;
+    }
+    downloadTextFile("字幕.srt", subtitlesToSrt(subtitles));
   }
 
   async function togglePlay() {
@@ -581,6 +715,21 @@ export default function App() {
               <Type size={16} />
               字幕
             </h3>
+            <div className="subtitleFileActions">
+              <label className="button light fileButton">
+                <Upload size={16} />
+                匯入 SRT / JSON
+                <input type="file" accept=".srt,.json,application/json,text/plain" onChange={handleSubtitleImport} />
+              </label>
+              <button className="button light" onClick={() => downloadSubtitles("srt")}>
+                <Download size={16} />
+                下載 SRT
+              </button>
+              <button className="button light" onClick={() => downloadSubtitles("json")}>
+                <Download size={16} />
+                下載 JSON
+              </button>
+            </div>
             {subtitles.map((subtitle) => (
               <div className="subtitleRow" key={subtitle.id}>
                 <label className="wide">

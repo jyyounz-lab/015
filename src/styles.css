@@ -404,6 +404,25 @@ select {
   min-width: 0;
 }
 
+.subtitleFileActions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.fileButton {
+  position: relative;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.fileButton input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 .subtitleControls {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
