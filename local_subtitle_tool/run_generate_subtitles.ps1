@@ -17,26 +17,32 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $PythonExe = Join-Path $ScriptDir ".venv\Scripts\python.exe"
 
 if (-not (Test-Path $PythonExe)) {
-  Write-Host "找不到虛擬環境，請先執行：" -ForegroundColor Yellow
+  Write-Host "Virtual environment not found. Please run:" -ForegroundColor Yellow
   Write-Host "python -m venv .venv"
   Write-Host ".\.venv\Scripts\Activate.ps1"
   Write-Host "python -m pip install -r requirements.txt"
   exit 1
 }
 
-$ArgsList = @(
-  (Join-Path $ScriptDir "generate_subtitles.py"),
-  "--input", $InputPath,
-  "--model", $Model,
-  "--language", $Language,
-  "--device", $Device,
-  "--compute-type", $ComputeType,
-  "--max-chars", $MaxChars,
-  "--max-duration", $MaxDuration
-)
+$ScriptPath = Join-Path $ScriptDir "generate_subtitles.py"
 
 if ($OutputDir -ne "") {
-  $ArgsList += @("--output-dir", $OutputDir)
+  & $PythonExe $ScriptPath `
+    --input $InputPath `
+    --output-dir $OutputDir `
+    --model $Model `
+    --language $Language `
+    --device $Device `
+    --compute-type $ComputeType `
+    --max-chars $MaxChars `
+    --max-duration $MaxDuration
+} else {
+  & $PythonExe $ScriptPath `
+    --input $InputPath `
+    --model $Model `
+    --language $Language `
+    --device $Device `
+    --compute-type $ComputeType `
+    --max-chars $MaxChars `
+    --max-duration $MaxDuration
 }
-
-& $PythonExe @ArgsList
