@@ -139,7 +139,7 @@ h3 {
 
 .clip {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) 18px;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   width: 100%;
@@ -150,12 +150,23 @@ h3 {
   border-radius: 8px;
 }
 
+.clip button {
+  background: transparent;
+  color: inherit;
+}
+
 .clip.active {
   background: #e7f4ed;
   border-color: #2b7b5d;
 }
 
-.clip b {
+.clipMain {
+  display: grid;
+  padding: 0;
+  place-items: center;
+}
+
+.clipMain b {
   display: grid;
   width: 30px;
   height: 30px;
@@ -165,22 +176,61 @@ h3 {
   border-radius: 50%;
 }
 
-.clip strong,
-.clip small {
+.clipText {
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.clipText strong,
+.clipText small {
   display: block;
 }
 
-.clip strong {
+.clipText strong {
   overflow: hidden;
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.clip small {
+.clipText small {
   margin-top: 3px;
   color: #66766e;
   font-size: 12px;
+}
+
+.clipActions {
+  display: grid;
+  grid-template-columns: repeat(3, 30px);
+  gap: 4px;
+}
+
+.clipActions button {
+  display: grid;
+  min-height: 30px;
+  place-items: center;
+  background: #eef4f0;
+  border: 1px solid #d2ded6;
+  border-radius: 8px;
+}
+
+.mergeInfo {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 12px;
+  color: #254234;
+  background: #edf5f0;
+  border: 1px solid #d7e4dc;
+  border-radius: 8px;
+}
+
+.mergeInfo p {
+  margin: 0;
+  color: #52645b;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .stage {
@@ -271,6 +321,19 @@ h3 {
   accent-color: #24694f;
 }
 
+.scrubControl {
+  margin-bottom: 12px;
+  color: #25362d;
+  font-size: 13px;
+}
+
+.rangeLabels {
+  margin: -4px 0 12px;
+  color: #60716a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .timeFields {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -324,11 +387,24 @@ select {
 
 .subtitleRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 62px 62px 38px;
-  gap: 6px;
+  grid-template-columns: minmax(160px, 1.4fr) 72px 72px minmax(116px, 1fr) 54px 54px 64px 38px;
+  gap: 8px;
+  align-items: end;
+  padding: 10px;
+  background: #f8faf8;
+  border: 1px solid #dde7e0;
+  border-radius: 8px;
 }
 
-.subtitleRow button {
+.subtitleRow .wide {
+  min-width: 0;
+}
+
+.subtitleRow input[type="color"] {
+  padding: 4px;
+}
+
+.subtitleRow .deleteSubtitle {
   display: grid;
   min-height: 40px;
   place-items: center;
@@ -393,5 +469,14 @@ select {
   .timeFields,
   .subtitleRow {
     grid-template-columns: 1fr;
+  }
+
+  .clip {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .clipActions {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, 1fr);
   }
 }
