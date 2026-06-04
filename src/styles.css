@@ -480,6 +480,20 @@ select {
   border-radius: 8px;
 }
 
+.exportProgress {
+  height: 10px;
+  overflow: hidden;
+  background: #dce7e0;
+  border-radius: 999px;
+}
+
+.exportProgress div {
+  height: 100%;
+  background: #145c43;
+  border-radius: inherit;
+  transition: width 0.25s ease;
+}
+
 .empty {
   margin: 0;
   padding: 14px;

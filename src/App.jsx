@@ -146,6 +146,47 @@ function downloadTextFile(filename, content, type = "text/plain;charset=utf-8") 
   URL.revokeObjectURL(url);
 }
 
+function waitForVideoReady(video) {
+  return new Promise((resolve, reject) => {
+    if (video.readyState >= 2 && video.videoWidth > 0) {
+      resolve();
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("影片載入逾時，請換較短影片或重新上傳後再試。"));
+    }, 20000);
+
+    const cleanup = () => {
+      window.clearTimeout(timeout);
+      video.removeEventListener("loadeddata", onReady);
+      video.removeEventListener("canplay", onReady);
+      video.removeEventListener("error", onError);
+    };
+
+    const onReady = () => {
+      if (video.videoWidth > 0) {
+        cleanup();
+        resolve();
+      }
+    };
+
+    const onError = () => {
+      cleanup();
+      reject(new Error("影片讀取失敗，請確認檔案格式可由瀏覽器播放。"));
+    };
+
+    video.addEventListener("loadeddata", onReady);
+    video.addEventListener("canplay", onReady);
+    video.addEventListener("error", onError);
+  });
+}
+
+function nextAnimationFrame() {
+  return new Promise((resolve) => requestAnimationFrame(resolve));
+}
+
 function loadClip(file) {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
@@ -265,6 +306,7 @@ export default function App() {
   const [status, setStatus] = useState("尚未匯出");
   const [downloadUrl, setDownloadUrl] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [exportPercent, setExportPercent] = useState(0);
 
   const activeClip = clips.find((clip) => clip.id === activeId) || clips[0];
   const totalDuration = useMemo(
@@ -410,102 +452,133 @@ export default function App() {
     if (!clips.length || exporting) return;
     setExporting(true);
     setDownloadUrl("");
-    setStatus("準備匯出...");
+    setExportPercent(0);
+    setStatus("準備匯出，處理時間會接近影片長度，請先不要關閉分頁。");
 
-    const canvas = document.createElement("canvas");
-    canvas.width = 1280;
-    canvas.height = 720;
-    const ctx = canvas.getContext("2d");
-    const stream = canvas.captureStream(30);
-    const audioContext = new AudioContext();
-    const audioOutput = audioContext.createMediaStreamDestination();
-    audioOutput.stream.getAudioTracks().forEach((track) => stream.addTrack(track));
-    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-      ? "video/webm;codecs=vp9,opus"
-      : "video/webm";
-    const recorder = new MediaRecorder(stream, { mimeType });
-    const chunks = [];
+    let audioContext = null;
+    let recorder = null;
 
-    recorder.ondataavailable = (event) => {
-      if (event.data.size) chunks.push(event.data);
-    };
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 960;
+      canvas.height = 540;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("瀏覽器無法建立匯出畫布。");
 
-    const finished = new Promise((resolve) => {
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: "video/webm" });
-        setDownloadUrl(URL.createObjectURL(blob));
-        resolve();
+      const stream = canvas.captureStream(24);
+      audioContext = new AudioContext();
+      await audioContext.resume();
+      const audioOutput = audioContext.createMediaStreamDestination();
+      audioOutput.stream.getAudioTracks().forEach((track) => stream.addTrack(track));
+
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
+        ? "video/webm;codecs=vp8,opus"
+        : "video/webm";
+      recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 2500000 });
+      const chunks = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size) chunks.push(event.data);
       };
-    });
 
-    recorder.start(300);
-    let timelineTime = 0;
-
-    for (let index = 0; index < clips.length; index += 1) {
-      const clip = clips[index];
-      const video = document.createElement("video");
-      video.preload = "auto";
-      video.playsInline = true;
-      video.src = clip.url;
-
-      await new Promise((resolve) => {
-        video.onloadeddata = resolve;
+      const finished = new Promise((resolve, reject) => {
+        recorder.onerror = () => reject(new Error("瀏覽器影片錄製失敗，請縮短片段或重新整理後再試。"));
+        recorder.onstop = () => {
+          if (!chunks.length) {
+            reject(new Error("匯出沒有產生影片資料，請重新上傳影片後再試。"));
+            return;
+          }
+          const blob = new Blob(chunks, { type: "video/webm" });
+          setDownloadUrl(URL.createObjectURL(blob));
+          resolve();
+        };
       });
 
-      try {
-        const source = audioContext.createMediaElementSource(video);
-        source.connect(audioOutput);
-      } catch {
-        setStatus("音訊匯出受瀏覽器限制，仍會繼續匯出畫面。");
-      }
+      recorder.start(1000);
+      let timelineTime = 0;
+      let lastStatusAt = 0;
 
-      await seek(video, clip.start);
-      await video.play();
+      for (let index = 0; index < clips.length; index += 1) {
+        const clip = clips[index];
+        const video = document.createElement("video");
+        video.preload = "auto";
+        video.playsInline = true;
+        video.src = clip.url;
 
-      const segmentDuration = Math.max(0, clip.end - clip.start);
-      const startAt = performance.now();
-      const timelineStart = timelineTime;
+        setStatus(`正在載入第 ${index + 1} 段影片...`);
+        await waitForVideoReady(video);
 
-      while ((performance.now() - startAt) / 1000 < segmentDuration) {
-        const elapsed = (performance.now() - startAt) / 1000;
-        const currentTimeline = timelineStart + elapsed;
-
-        ctx.fillStyle = "#070a10";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        const ratio = Math.min(canvas.width / video.videoWidth, canvas.height / video.videoHeight);
-        const w = video.videoWidth * ratio;
-        const h = video.videoHeight * ratio;
-        ctx.drawImage(video, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
-
-        if (transition === "fade") {
-          const edge = 0.55;
-          const fadeIn = index > 0 ? clamp(1 - elapsed / edge, 0, 1) : 0;
-          const fadeOut = index < clips.length - 1 ? clamp((elapsed - (segmentDuration - edge)) / edge, 0, 1) : 0;
-          const alpha = Math.max(fadeIn, fadeOut);
-          if (alpha > 0) {
-            ctx.fillStyle = `rgba(0,0,0,${alpha})`;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-          }
+        try {
+          const source = audioContext.createMediaElementSource(video);
+          source.connect(audioOutput);
+        } catch {
+          setStatus("音訊匯出受瀏覽器限制，仍會繼續匯出畫面。");
         }
 
-        drawSubtitle(ctx, activeSubtitle(currentTimeline), canvas.width, canvas.height);
-        if (coverWatermark) drawCover(ctx, canvas.width, canvas.height);
-        if (showWatermark) drawWatermark(ctx, watermark, canvas.width, canvas.height);
+        await seek(video, clip.start);
+        const playResult = video.play();
+        if (playResult) await playResult;
 
-        setStatus(`匯出中 ${timeLabel(currentTimeline)} / ${timeLabel(totalDuration)}`);
-        await new Promise((resolve) => requestAnimationFrame(resolve));
+        const segmentDuration = Math.max(0, clip.end - clip.start);
+        const startAt = performance.now();
+        const timelineStart = timelineTime;
+
+        while ((performance.now() - startAt) / 1000 < segmentDuration) {
+          const elapsed = (performance.now() - startAt) / 1000;
+          const currentTimeline = timelineStart + elapsed;
+
+          ctx.fillStyle = "#070a10";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          if (video.videoWidth > 0 && video.videoHeight > 0) {
+            const ratio = Math.min(canvas.width / video.videoWidth, canvas.height / video.videoHeight);
+            const w = video.videoWidth * ratio;
+            const h = video.videoHeight * ratio;
+            ctx.drawImage(video, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+          }
+
+          if (transition === "fade") {
+            const edge = 0.55;
+            const fadeIn = index > 0 ? clamp(1 - elapsed / edge, 0, 1) : 0;
+            const fadeOut = index < clips.length - 1 ? clamp((elapsed - (segmentDuration - edge)) / edge, 0, 1) : 0;
+            const alpha = Math.max(fadeIn, fadeOut);
+            if (alpha > 0) {
+              ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+          }
+
+          drawSubtitle(ctx, activeSubtitle(currentTimeline), canvas.width, canvas.height);
+          if (coverWatermark) drawCover(ctx, canvas.width, canvas.height);
+          if (showWatermark) drawWatermark(ctx, watermark, canvas.width, canvas.height);
+
+          const now = performance.now();
+          if (now - lastStatusAt > 350) {
+            const percent = totalDuration ? Math.min(99, Math.round((currentTimeline / totalDuration) * 100)) : 0;
+            setExportPercent(percent);
+            setStatus(`匯出中 ${timeLabel(currentTimeline)} / ${timeLabel(totalDuration)}（${percent}%）`);
+            lastStatusAt = now;
+          }
+
+          await nextAnimationFrame();
+        }
+
+        video.pause();
+        timelineTime += segmentDuration;
       }
 
-      video.pause();
-      timelineTime += segmentDuration;
+      recorder.stop();
+      await finished;
+      setExportPercent(100);
+      setStatus("匯出完成，可以下載影片。");
+    } catch (error) {
+      if (recorder?.state === "recording") recorder.stop();
+      setStatus(`匯出失敗：${error.message || "瀏覽器處理影片時發生錯誤"}`);
+      setExportPercent(0);
+    } finally {
+      if (audioContext) await audioContext.close().catch(() => {});
+      setExporting(false);
     }
-
-    recorder.stop();
-    await finished;
-    await audioContext.close();
-    setStatus("匯出完成，可以下載影片。");
-    setExporting(false);
   }
 
   return (
@@ -879,6 +952,11 @@ export default function App() {
 
           <div className="downloadBox">
             <strong>{status}</strong>
+            {exporting && (
+              <div className="exportProgress" aria-label="匯出進度">
+                <div style={{ width: `${exportPercent}%` }} />
+              </div>
+            )}
             {downloadUrl && (
               <a className="button primary full" href={downloadUrl} download="剪輯完成影片.webm">
                 <Download size={18} />
