@@ -118,13 +118,14 @@ h3 {
 
 .layout {
   display: grid;
-  grid-template-columns: 290px minmax(0, 1fr) 370px;
+  grid-template-columns: 290px minmax(0, 1fr) minmax(320px, 370px);
   gap: 16px;
   max-width: 1540px;
   margin: 0 auto;
 }
 
 .panel {
+  min-width: 0;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid #d4dfd7;
   border-radius: 8px;
@@ -376,6 +377,8 @@ select {
   display: grid;
   align-content: start;
   gap: 16px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .tools section {
@@ -387,10 +390,11 @@ select {
 
 .subtitleRow {
   display: grid;
-  grid-template-columns: minmax(160px, 1.4fr) 72px 72px minmax(116px, 1fr) 54px 54px 64px 38px;
-  gap: 8px;
-  align-items: end;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
   padding: 10px;
+  min-width: 0;
+  overflow: hidden;
   background: #f8faf8;
   border: 1px solid #dde7e0;
   border-radius: 8px;
@@ -400,11 +404,32 @@ select {
   min-width: 0;
 }
 
-.subtitleRow input[type="color"] {
+.subtitleControls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 8px;
+  align-items: end;
+  min-width: 0;
+}
+
+.subtitleControls label {
+  min-width: 0;
+}
+
+.subtitleControls .fontField {
+  grid-column: span 2;
+}
+
+.subtitleControls input,
+.subtitleControls select {
+  min-width: 0;
+}
+
+.subtitleControls input[type="color"] {
   padding: 4px;
 }
 
-.subtitleRow .deleteSubtitle {
+.subtitleControls .deleteSubtitle {
   display: grid;
   min-height: 40px;
   place-items: center;
@@ -469,6 +494,12 @@ select {
   .timeFields,
   .subtitleRow {
     grid-template-columns: 1fr;
+  }
+
+  .subtitleControls,
+  .subtitleControls .fontField {
+    grid-template-columns: 1fr;
+    grid-column: auto;
   }
 
   .clip {

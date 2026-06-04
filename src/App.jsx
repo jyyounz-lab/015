@@ -594,92 +594,99 @@ export default function App() {
                     }
                   />
                 </label>
-                <label>
-                  開始
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={subtitle.start}
-                    onChange={(event) =>
-                      setSubtitles((rows) =>
-                        rows.map((row) => (row.id === subtitle.id ? { ...row, start: event.target.value } : row))
-                      )
-                    }
-                  />
-                </label>
-                <label>
-                  結束
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={subtitle.end}
-                    onChange={(event) =>
-                      setSubtitles((rows) =>
-                        rows.map((row) => (row.id === subtitle.id ? { ...row, end: event.target.value } : row))
-                      )
-                    }
-                  />
-                </label>
-                <label>
-                  字型
-                  <select
-                    value={subtitle.fontFamily || fontOptions[0].value}
-                    onChange={(event) =>
-                      setSubtitles((rows) =>
-                        rows.map((row) => (row.id === subtitle.id ? { ...row, fontFamily: event.target.value } : row))
-                      )
-                    }
-                  >
-                    {fontOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  字色
-                  <input
-                    type="color"
-                    value={colorInputValue(subtitle.color, "#ffffff")}
-                    onChange={(event) =>
-                      setSubtitles((rows) =>
-                        rows.map((row) => (row.id === subtitle.id ? { ...row, color: event.target.value } : row))
-                      )
-                    }
-                  />
-                </label>
-                <label>
-                  底色
-                  <input
-                    type="color"
-                    value={colorInputValue(subtitle.backgroundColor, "#000000")}
-                    onChange={(event) =>
-                      setSubtitles((rows) =>
-                        rows.map((row) =>
-                          row.id === subtitle.id ? { ...row, backgroundColor: `${event.target.value}cc` } : row
+                <div className="subtitleControls">
+                  <label>
+                    開始
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={subtitle.start}
+                      onChange={(event) =>
+                        setSubtitles((rows) =>
+                          rows.map((row) => (row.id === subtitle.id ? { ...row, start: event.target.value } : row))
                         )
-                      )
-                    }
-                  />
-                </label>
-                <label>
-                  大小
-                  <input
-                    type="number"
-                    min="16"
-                    max="72"
-                    value={subtitle.fontSize || 42}
-                    onChange={(event) =>
-                      setSubtitles((rows) =>
-                        rows.map((row) => (row.id === subtitle.id ? { ...row, fontSize: event.target.value } : row))
-                      )
-                    }
-                  />
-                </label>
-                <button className="deleteSubtitle" onClick={() => setSubtitles((rows) => rows.filter((row) => row.id !== subtitle.id))}>
-                  <Trash2 size={15} />
-                </button>
+                      }
+                    />
+                  </label>
+                  <label>
+                    結束
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={subtitle.end}
+                      onChange={(event) =>
+                        setSubtitles((rows) =>
+                          rows.map((row) => (row.id === subtitle.id ? { ...row, end: event.target.value } : row))
+                        )
+                      }
+                    />
+                  </label>
+                  <label className="fontField">
+                    字型
+                    <select
+                      value={subtitle.fontFamily || fontOptions[0].value}
+                      onChange={(event) =>
+                        setSubtitles((rows) =>
+                          rows.map((row) =>
+                            row.id === subtitle.id ? { ...row, fontFamily: event.target.value } : row
+                          )
+                        )
+                      }
+                    >
+                      {fontOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    字色
+                    <input
+                      type="color"
+                      value={colorInputValue(subtitle.color, "#ffffff")}
+                      onChange={(event) =>
+                        setSubtitles((rows) =>
+                          rows.map((row) => (row.id === subtitle.id ? { ...row, color: event.target.value } : row))
+                        )
+                      }
+                    />
+                  </label>
+                  <label>
+                    底色
+                    <input
+                      type="color"
+                      value={colorInputValue(subtitle.backgroundColor, "#000000")}
+                      onChange={(event) =>
+                        setSubtitles((rows) =>
+                          rows.map((row) =>
+                            row.id === subtitle.id ? { ...row, backgroundColor: `${event.target.value}cc` } : row
+                          )
+                        )
+                      }
+                    />
+                  </label>
+                  <label>
+                    大小
+                    <input
+                      type="number"
+                      min="16"
+                      max="72"
+                      value={subtitle.fontSize || 42}
+                      onChange={(event) =>
+                        setSubtitles((rows) =>
+                          rows.map((row) => (row.id === subtitle.id ? { ...row, fontSize: event.target.value } : row))
+                        )
+                      }
+                    />
+                  </label>
+                  <button
+                    className="deleteSubtitle"
+                    onClick={() => setSubtitles((rows) => rows.filter((row) => row.id !== subtitle.id))}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
               </div>
             ))}
             <button
