@@ -34,6 +34,22 @@ const defaultSubtitleStyle = {
   backgroundColor: "transparent",
   fontSize: 42
 };
+const exportResolutions = {
+  "720p": { label: "720P", width: 1280, height: 720, videoBitsPerSecond: 4500000 },
+  "1080p": { label: "1080P", width: 1920, height: 1080, videoBitsPerSecond: 8000000 }
+};
+const exportFormats = {
+  mp4: {
+    label: "MP4",
+    extension: "mp4",
+    mimeTypes: ["video/mp4;codecs=h264,aac", "video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4"]
+  },
+  webm: {
+    label: "WebM",
+    extension: "webm",
+    mimeTypes: ["video/webm;codecs=vp8,opus", "video/webm"]
+  }
+};
 
 function timeLabel(value) {
   const safe = Math.max(0, seconds(value));
@@ -144,6 +160,18 @@ function downloadTextFile(filename, content, type = "text/plain;charset=utf-8") 
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function findSupportedRecorderFormat(preferredFormat) {
+  const requested = exportFormats[preferredFormat] || exportFormats.mp4;
+  const fallbackOrder = requested === exportFormats.webm ? [requested, exportFormats.mp4] : [requested, exportFormats.webm];
+
+  for (const format of fallbackOrder) {
+    const mimeType = format.mimeTypes.find((type) => MediaRecorder.isTypeSupported(type));
+    if (mimeType) return { ...format, mimeType };
+  }
+
+  throw new Error("瀏覽器不支援可用的影片匯出格式。");
 }
 
 function waitForVideoReady(video) {
@@ -305,6 +333,9 @@ export default function App() {
   ]);
   const [status, setStatus] = useState("尚未匯出");
   const [downloadUrl, setDownloadUrl] = useState("");
+  const [downloadFileName, setDownloadFileName] = useState("剪輯完成影片.mp4");
+  const [exportFormat, setExportFormat] = useState("mp4");
+  const [exportResolution, setExportResolution] = useState("720p");
   const [exporting, setExporting] = useState(false);
   const [exportPercent, setExportPercent] = useState(0);
 
@@ -459,9 +490,15 @@ export default function App() {
     let recorder = null;
 
     try {
+      const output = exportResolutions[exportResolution] || exportResolutions["720p"];
+      const recorderFormat = findSupportedRecorderFormat(exportFormat);
+      const formatChanged = recorderFormat.extension !== exportFormat;
+      setDownloadFileName(`剪輯完成影片-${output.label}.${recorderFormat.extension}`);
+      if (formatChanged) setStatus(`此瀏覽器不支援選擇的格式，已改用 ${recorderFormat.label} 匯出。`);
+
       const canvas = document.createElement("canvas");
-      canvas.width = 960;
-      canvas.height = 540;
+      canvas.width = output.width;
+      canvas.height = output.height;
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("瀏覽器無法建立匯出畫布。");
 
@@ -471,10 +508,10 @@ export default function App() {
       const audioOutput = audioContext.createMediaStreamDestination();
       audioOutput.stream.getAudioTracks().forEach((track) => stream.addTrack(track));
 
-      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
-        ? "video/webm;codecs=vp8,opus"
-        : "video/webm";
-      recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 2500000 });
+      recorder = new MediaRecorder(stream, {
+        mimeType: recorderFormat.mimeType,
+        videoBitsPerSecond: output.videoBitsPerSecond
+      });
       const chunks = [];
 
       recorder.ondataavailable = (event) => {
@@ -488,7 +525,7 @@ export default function App() {
             reject(new Error("匯出沒有產生影片資料，請重新上傳影片後再試。"));
             return;
           }
-          const blob = new Blob(chunks, { type: "video/webm" });
+          const blob = new Blob(chunks, { type: recorderFormat.mimeType });
           setDownloadUrl(URL.createObjectURL(blob));
           resolve();
         };
@@ -556,7 +593,11 @@ export default function App() {
           if (now - lastStatusAt > 350) {
             const percent = totalDuration ? Math.min(99, Math.round((currentTimeline / totalDuration) * 100)) : 0;
             setExportPercent(percent);
-            setStatus(`匯出中 ${timeLabel(currentTimeline)} / ${timeLabel(totalDuration)}（${percent}%）`);
+            setStatus(
+              `匯出中 ${output.label} ${recorderFormat.label} ${timeLabel(currentTimeline)} / ${timeLabel(
+                totalDuration
+              )}（${percent}%）`
+            );
             lastStatusAt = now;
           }
 
@@ -570,7 +611,7 @@ export default function App() {
       recorder.stop();
       await finished;
       setExportPercent(100);
-      setStatus("匯出完成，可以下載影片。");
+      setStatus(`匯出完成：${output.label} ${recorderFormat.label}，可以下載影片。`);
     } catch (error) {
       if (recorder?.state === "recording") recorder.stop();
       setStatus(`匯出失敗：${error.message || "瀏覽器處理影片時發生錯誤"}`);
@@ -947,6 +988,39 @@ export default function App() {
             </label>
           </section>
 
+          <section>
+            <h3>
+              <Download size={16} />
+              輸出設定
+            </h3>
+            <div className="exportSettings">
+              <label>
+                格式
+                <select value={exportFormat} disabled={exporting} onChange={(event) => setExportFormat(event.target.value)}>
+                  {Object.entries(exportFormats).map(([value, option]) => (
+                    <option key={value} value={value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                解析度
+                <select
+                  value={exportResolution}
+                  disabled={exporting}
+                  onChange={(event) => setExportResolution(event.target.value)}
+                >
+                  {Object.entries(exportResolutions).map(([value, option]) => (
+                    <option key={value} value={value}>
+                      {option.label} ({option.width}x{option.height})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </section>
+
           <div className="downloadBox">
             <strong>{status}</strong>
             {exporting && (
@@ -955,7 +1029,7 @@ export default function App() {
               </div>
             )}
             {downloadUrl && (
-              <a className="button primary full" href={downloadUrl} download="剪輯完成影片.webm">
+              <a className="button primary full" href={downloadUrl} download={downloadFileName}>
                 <Download size={18} />
                 下載影片
               </a>

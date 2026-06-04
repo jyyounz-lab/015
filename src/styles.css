@@ -471,6 +471,13 @@ select {
   accent-color: #24694f;
 }
 
+.exportSettings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
 .downloadBox {
   display: grid;
   gap: 10px;
@@ -530,7 +537,8 @@ select {
   }
 
   .subtitleControls,
-  .subtitleControls .fontField {
+  .subtitleControls .fontField,
+  .exportSettings {
     grid-template-columns: 1fr;
     grid-column: auto;
   }
