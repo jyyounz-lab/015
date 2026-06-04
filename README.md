@@ -44,6 +44,31 @@ APP 也支援下載目前字幕：
 - `下載 SRT`：方便給其他剪輯軟體使用。
 - `下載 JSON`：保留 APP 內的字型、顏色與大小設定。
 
+本專案已附一個本機字幕工具：
+
+```text
+local_subtitle_tool/
+```
+
+基本使用流程：
+
+```powershell
+cd local_subtitle_tool
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+.\run_generate_subtitles.ps1 -InputPath "C:\影片\demo.mp4"
+```
+
+工具會輸出：
+
+```text
+demo.srt
+demo.app-subtitles.json
+```
+
+再回到網頁 APP 匯入即可。
+
 ## 部署到 GitHub Pages
 
 1. 將此專案推到 GitHub repository。
