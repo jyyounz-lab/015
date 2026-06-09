@@ -8,6 +8,7 @@ import {
   Pause,
   Play,
   Plus,
+  Copy,
   RotateCcw,
   Scissors,
   ShieldOff,
@@ -51,6 +52,14 @@ const exportFormats = {
     mimeTypes: ["video/webm;codecs=vp8,opus", "video/webm"]
   }
 };
+const localSubtitleToolPath = "C:\\Users\\林毅韋\\Documents\\New project\\local_subtitle_tool";
+const whisperModels = ["tiny", "base", "small", "medium", "large-v3"];
+const subtitleLanguages = [
+  { label: "中文", value: "zh" },
+  { label: "英文", value: "en" },
+  { label: "日文", value: "ja" },
+  { label: "自動偵測", value: "" }
+];
 
 function timeLabel(value) {
   const safe = Math.max(0, seconds(value));
@@ -161,6 +170,24 @@ function downloadTextFile(filename, content, type = "text/plain;charset=utf-8") 
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function quotePowerShell(value) {
+  const safeValue = String(value).replace(/`/g, "``").replace(/"/g, '`"');
+  return `"${safeValue}"`;
+}
+
+function buildLocalSubtitleCommand({ inputPath, outputDir, model, language }) {
+  const trimmedInput = inputPath.trim();
+  if (!trimmedInput) return "";
+  const parts = [
+    `cd ${quotePowerShell(localSubtitleToolPath)}`,
+    `powershell -ExecutionPolicy Bypass -File .\\run_generate_subtitles.ps1 -InputPath ${quotePowerShell(trimmedInput)}`
+  ];
+  if (outputDir.trim()) parts[1] += ` -OutputDir ${quotePowerShell(outputDir.trim())}`;
+  if (model) parts[1] += ` -Model ${model}`;
+  if (language) parts[1] += ` -Language ${language}`;
+  return parts.join("; ");
 }
 
 function findSupportedRecorderFormat(preferredFormat) {
@@ -356,6 +383,11 @@ export default function App() {
   const [exportResolution, setExportResolution] = useState("original");
   const [exporting, setExporting] = useState(false);
   const [exportPercent, setExportPercent] = useState(0);
+  const [localSubtitleFileName, setLocalSubtitleFileName] = useState("");
+  const [localSubtitleInputPath, setLocalSubtitleInputPath] = useState("");
+  const [localSubtitleOutputDir, setLocalSubtitleOutputDir] = useState("");
+  const [localSubtitleModel, setLocalSubtitleModel] = useState("small");
+  const [localSubtitleLanguage, setLocalSubtitleLanguage] = useState("zh");
 
   const activeClip = clips.find((clip) => clip.id === activeId) || clips[0];
   const totalDuration = useMemo(
@@ -376,6 +408,16 @@ export default function App() {
   const timelinePreviewTime = activeClip ? activeClipOffset + Math.max(0, previewTime - activeClip.start) : 0;
   const currentSubtitle = activeSubtitle(timelinePreviewTime);
   const selectedOutput = resolveExportResolution(exportResolution, clips[0]);
+  const localSubtitleCommand = useMemo(
+    () =>
+      buildLocalSubtitleCommand({
+        inputPath: localSubtitleInputPath,
+        outputDir: localSubtitleOutputDir,
+        model: localSubtitleModel,
+        language: localSubtitleLanguage
+      }),
+    [localSubtitleInputPath, localSubtitleOutputDir, localSubtitleModel, localSubtitleLanguage]
+  );
 
   async function handleUpload(event) {
     const files = Array.from(event.target.files || []).filter((file) => file.type.startsWith("video/"));
@@ -454,6 +496,27 @@ export default function App() {
       setStatus(`字幕匯入失敗：${error.message || "格式不正確"}`);
     } finally {
       event.target.value = "";
+    }
+  }
+
+  function handleLocalSubtitleVideoSelect(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setLocalSubtitleFileName(file.name);
+    setStatus("已讀取影片名稱。因瀏覽器安全限制，請在下方貼上完整本機路徑後再複製指令。");
+    event.target.value = "";
+  }
+
+  async function copyLocalSubtitleCommand() {
+    if (!localSubtitleCommand) {
+      setStatus("請先輸入影片完整路徑，例如 D:\\AAAA.MP4。");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(localSubtitleCommand);
+      setStatus("已複製本機字幕產生指令，請貼到 PowerShell 執行。");
+    } catch {
+      setStatus("瀏覽器無法自動複製，請手動選取指令內容後複製。");
     }
   }
 
@@ -989,6 +1052,72 @@ export default function App() {
               <Plus size={16} />
               新增字幕
             </button>
+          </section>
+
+          <section>
+            <h3>
+              <Copy size={16} />
+              本機 AI 字幕助手
+            </h3>
+            <div className="subtitleFileActions">
+              <label className="button light fileButton">
+                <Upload size={16} />
+                選擇本機影片
+                <input type="file" accept="video/*,audio/*" onChange={handleLocalSubtitleVideoSelect} />
+              </label>
+            </div>
+            {localSubtitleFileName && <p className="exportHint">已選擇：{localSubtitleFileName}</p>}
+            <label>
+              影片完整路徑
+              <input
+                value={localSubtitleInputPath}
+                placeholder="例如 D:\AAAA.MP4"
+                onChange={(event) => setLocalSubtitleInputPath(event.target.value)}
+              />
+            </label>
+            <label>
+              輸出資料夾
+              <input
+                value={localSubtitleOutputDir}
+                placeholder="可留空，預設輸出到影片所在資料夾"
+                onChange={(event) => setLocalSubtitleOutputDir(event.target.value)}
+              />
+            </label>
+            <div className="localSubtitleOptions">
+              <label>
+                模型
+                <select value={localSubtitleModel} onChange={(event) => setLocalSubtitleModel(event.target.value)}>
+                  {whisperModels.map((model) => (
+                    <option key={model} value={model}>
+                      {model}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                語言
+                <select value={localSubtitleLanguage} onChange={(event) => setLocalSubtitleLanguage(event.target.value)}>
+                  {subtitleLanguages.map((language) => (
+                    <option key={language.label} value={language.value}>
+                      {language.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label>
+              PowerShell 指令
+              <textarea
+                className="localSubtitleCommand"
+                readOnly
+                value={localSubtitleCommand || "請先輸入影片完整路徑。"}
+              />
+            </label>
+            <button className="button light full" disabled={!localSubtitleCommand} onClick={copyLocalSubtitleCommand}>
+              <Copy size={16} />
+              複製指令
+            </button>
+            <p className="exportHint">執行完成後會產生 SRT 與 APP JSON，再用上方「匯入 SRT / JSON」載入。</p>
           </section>
 
           <section>

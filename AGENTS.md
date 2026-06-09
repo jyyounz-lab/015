@@ -69,6 +69,7 @@ Invoke-RestMethod -Uri $uri | Select-Object -ExpandProperty workflow_runs | Sele
 - 裁切與合併片段
 - 淡入淡出轉場
 - 匯入與下載 SRT / JSON 字幕
+- 本機 AI 字幕助手：在網頁產生可複製的 PowerShell 指令，再用本機工具輸出 SRT / JSON
 - 字幕可調字型、字色、底色、大小
 - 字幕預設：黑字、透明底
 - 加入簡單浮水印

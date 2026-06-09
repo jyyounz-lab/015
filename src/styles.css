@@ -11,7 +11,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -351,7 +352,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 40px;
   border: 1px solid #cbd7d0;
@@ -359,6 +361,11 @@ select {
   padding: 0 10px;
   color: #142119;
   background: #fff;
+}
+
+textarea {
+  padding: 10px;
+  resize: vertical;
 }
 
 .timeFields div {
@@ -478,6 +485,21 @@ select {
   min-width: 0;
 }
 
+.localSubtitleOptions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.localSubtitleCommand {
+  min-height: 118px;
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
 .exportHint {
   margin: 0;
   color: #4d5d55;
@@ -545,7 +567,8 @@ select {
 
   .subtitleControls,
   .subtitleControls .fontField,
-  .exportSettings {
+  .exportSettings,
+  .localSubtitleOptions {
     grid-template-columns: 1fr;
     grid-column: auto;
   }
