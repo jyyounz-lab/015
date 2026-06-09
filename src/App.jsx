@@ -5,6 +5,7 @@ import {
   Download,
   FastForward,
   Film,
+  FolderOpen,
   Pause,
   Play,
   Plus,
@@ -188,6 +189,24 @@ function buildLocalSubtitleCommand({ inputPath, outputDir, model, language }) {
   if (model) parts[1] += ` -Model ${model}`;
   if (language) parts[1] += ` -Language ${language}`;
   return parts.join("; ");
+}
+
+function looksLikeMediaPath(path) {
+  return /\.(mp4|mov|m4v|mkv|webm|avi|mp3|wav|m4a|aac|flac)$/i.test(path.trim());
+}
+
+function appendFileNameToPath(path, fileName) {
+  const trimmedPath = path.trim().replace(/^"|"$/g, "");
+  if (!trimmedPath || !fileName || looksLikeMediaPath(trimmedPath)) return trimmedPath;
+  const separator = trimmedPath.includes("/") && !trimmedPath.includes("\\") ? "/" : "\\";
+  return `${trimmedPath.replace(/[\\/]+$/g, "")}${separator}${fileName}`;
+}
+
+function parentDirectoryFromPath(path) {
+  const trimmedPath = path.trim().replace(/^"|"$/g, "");
+  const index = Math.max(trimmedPath.lastIndexOf("\\"), trimmedPath.lastIndexOf("/"));
+  if (index <= 0) return "";
+  return trimmedPath.slice(0, index);
 }
 
 function findSupportedRecorderFormat(preferredFormat) {
@@ -503,8 +522,48 @@ export default function App() {
     const file = event.target.files?.[0];
     if (!file) return;
     setLocalSubtitleFileName(file.name);
-    setStatus("已讀取影片名稱。請在下方貼上完整檔案路徑，必須包含影片檔名與副檔名。");
+    if (localSubtitleInputPath && !looksLikeMediaPath(localSubtitleInputPath)) {
+      const nextPath = appendFileNameToPath(localSubtitleInputPath, file.name);
+      setLocalSubtitleInputPath(nextPath);
+      const parent = parentDirectoryFromPath(nextPath);
+      if (parent && !localSubtitleOutputDir) setLocalSubtitleOutputDir(parent);
+      setStatus("已把選擇的影片檔名補到路徑後方。");
+    } else {
+      setStatus("已讀取影片名稱。瀏覽器無法取得完整磁碟路徑，請貼上資料夾路徑後按「補上檔名」。");
+    }
     event.target.value = "";
+  }
+
+  function updateLocalSubtitleInputPath(value) {
+    setLocalSubtitleInputPath(value);
+    const parent = looksLikeMediaPath(value) ? parentDirectoryFromPath(value) : "";
+    if (parent && !localSubtitleOutputDir) setLocalSubtitleOutputDir(parent);
+  }
+
+  function fillSelectedVideoFileName() {
+    if (!localSubtitleFileName) {
+      setStatus("請先按「選擇本機影片」，讓網頁知道影片檔名。");
+      return;
+    }
+    if (!localSubtitleInputPath.trim()) {
+      setStatus("請先貼上影片所在資料夾路徑，再按「補上檔名」。");
+      return;
+    }
+    const nextPath = appendFileNameToPath(localSubtitleInputPath, localSubtitleFileName);
+    setLocalSubtitleInputPath(nextPath);
+    const parent = parentDirectoryFromPath(nextPath);
+    if (parent) setLocalSubtitleOutputDir(parent);
+    setStatus("已補上影片檔名，並帶入輸出資料夾。");
+  }
+
+  function useVideoParentAsOutputDir() {
+    const parent = parentDirectoryFromPath(localSubtitleInputPath);
+    if (!parent) {
+      setStatus("請先輸入完整影片檔案路徑，再帶入輸出資料夾。");
+      return;
+    }
+    setLocalSubtitleOutputDir(parent);
+    setStatus("已使用影片所在資料夾作為輸出資料夾。");
   }
 
   async function copyLocalSubtitleCommand() {
@@ -1072,9 +1131,13 @@ export default function App() {
               <input
                 value={localSubtitleInputPath}
                 placeholder="例如 C:\Users\林毅韋\Desktop\小熊電煮鍋\新增資料夾\影片檔名.mp4"
-                onChange={(event) => setLocalSubtitleInputPath(event.target.value)}
+                onChange={(event) => updateLocalSubtitleInputPath(event.target.value)}
               />
             </label>
+            <button className="button light full" type="button" onClick={fillSelectedVideoFileName}>
+              <FolderOpen size={16} />
+              用已選影片補上檔名
+            </button>
             <label>
               輸出資料夾
               <input
@@ -1083,6 +1146,10 @@ export default function App() {
                 onChange={(event) => setLocalSubtitleOutputDir(event.target.value)}
               />
             </label>
+            <button className="button light full" type="button" onClick={useVideoParentAsOutputDir}>
+              <FolderOpen size={16} />
+              使用影片所在資料夾
+            </button>
             <div className="localSubtitleOptions">
               <label>
                 模型

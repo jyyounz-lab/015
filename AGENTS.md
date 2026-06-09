@@ -115,6 +115,7 @@ powershell -ExecutionPolicy Bypass -File .\run_generate_subtitles.ps1 -InputPath
 - 手動改檔請優先用 `apply_patch`。
 - 不要使用 `git reset --hard` 或還原使用者未要求還原的變更。
 - `.git` 寫入通常需要提升權限。
+- GitHub Pages 網頁無法取得使用者本機檔案的完整磁碟路徑；本機 AI 字幕助手只能取得檔名，再用使用者貼上的資料夾路徑輔助組合完整路徑。
 
 ## 驗證清單
 
