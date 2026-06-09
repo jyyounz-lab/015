@@ -237,13 +237,13 @@ h3 {
 
 .stage {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .preview {
   position: relative;
   display: grid;
-  min-height: 520px;
+  min-height: clamp(320px, 58vh, 520px);
   overflow: hidden;
   place-items: center;
   background: #06080c;
@@ -311,11 +311,27 @@ h3 {
 }
 
 .transport {
-  justify-content: center;
   padding: 10px;
   background: #fff;
   border: 1px solid #d8e1db;
   border-radius: 8px;
+}
+
+.previewTransport {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 3;
+  justify-content: flex-start;
+  max-width: calc(100% - 28px);
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 28px rgba(6, 10, 16, 0.24);
+  backdrop-filter: blur(8px);
+}
+
+.timeline {
+  padding-top: 14px;
 }
 
 .timeline input[type="range"] {
@@ -558,6 +574,18 @@ textarea {
 
   .preview {
     min-height: 320px;
+  }
+
+  .previewTransport {
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    flex-wrap: wrap;
+  }
+
+  .previewTransport button {
+    flex: 1 1 120px;
+    justify-content: center;
   }
 
   .timeFields,

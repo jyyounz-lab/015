@@ -859,6 +859,20 @@ export default function App() {
                   {coverWatermark && <div className="cover">授權遮罩區</div>}
                   {showWatermark && <div className="watermark">{watermark}</div>}
                 </div>
+                <div className="transport previewTransport">
+                  <button onClick={togglePlay} disabled={!activeClip}>
+                    {playing ? <Pause size={18} /> : <Play size={18} />}
+                    {playing ? "暫停" : "播放"}
+                  </button>
+                  <button onClick={() => jump(-5)} disabled={!activeClip}>
+                    <RotateCcw size={18} />
+                    後退 5 秒
+                  </button>
+                  <button onClick={() => jump(5)} disabled={!activeClip}>
+                    <FastForward size={18} />
+                    快轉 5 秒
+                  </button>
+                </div>
               </>
             ) : (
               <div className="drop">
@@ -866,21 +880,6 @@ export default function App() {
                 上傳影片開始剪輯
               </div>
             )}
-          </div>
-
-          <div className="transport">
-            <button onClick={togglePlay} disabled={!activeClip}>
-              {playing ? <Pause size={18} /> : <Play size={18} />}
-              {playing ? "暫停" : "播放"}
-            </button>
-            <button onClick={() => jump(-5)} disabled={!activeClip}>
-              <RotateCcw size={18} />
-              後退 5 秒
-            </button>
-            <button onClick={() => jump(5)} disabled={!activeClip}>
-              <FastForward size={18} />
-              快轉 5 秒
-            </button>
           </div>
 
           <div className="panel timeline">
