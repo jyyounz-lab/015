@@ -503,13 +503,13 @@ export default function App() {
     const file = event.target.files?.[0];
     if (!file) return;
     setLocalSubtitleFileName(file.name);
-    setStatus("已讀取影片名稱。因瀏覽器安全限制，請在下方貼上完整本機路徑後再複製指令。");
+    setStatus("已讀取影片名稱。請在下方貼上完整檔案路徑，必須包含影片檔名與副檔名。");
     event.target.value = "";
   }
 
   async function copyLocalSubtitleCommand() {
     if (!localSubtitleCommand) {
-      setStatus("請先輸入影片完整路徑，例如 D:\\AAAA.MP4。");
+      setStatus("請先輸入影片完整檔案路徑，例如 D:\\AAAA.MP4。");
       return;
     }
     try {
@@ -1068,10 +1068,10 @@ export default function App() {
             </div>
             {localSubtitleFileName && <p className="exportHint">已選擇：{localSubtitleFileName}</p>}
             <label>
-              影片完整路徑
+              影片完整檔案路徑
               <input
                 value={localSubtitleInputPath}
-                placeholder="例如 D:\AAAA.MP4"
+                placeholder="例如 C:\Users\林毅韋\Desktop\小熊電煮鍋\新增資料夾\影片檔名.mp4"
                 onChange={(event) => setLocalSubtitleInputPath(event.target.value)}
               />
             </label>
@@ -1110,14 +1110,14 @@ export default function App() {
               <textarea
                 className="localSubtitleCommand"
                 readOnly
-                value={localSubtitleCommand || "請先輸入影片完整路徑。"}
+                value={localSubtitleCommand || "請先輸入影片完整檔案路徑，路徑最後要是 .mp4 / .mov / .m4v 等影片檔。"}
               />
             </label>
             <button className="button light full" disabled={!localSubtitleCommand} onClick={copyLocalSubtitleCommand}>
               <Copy size={16} />
               複製指令
             </button>
-            <p className="exportHint">執行完成後會產生 SRT 與 APP JSON，再用上方「匯入 SRT / JSON」載入。</p>
+            <p className="exportHint">注意：InputPath 要選到影片檔本身，不是資料夾。執行完成後會產生 SRT 與 APP JSON，再用上方「匯入 SRT / JSON」載入。</p>
           </section>
 
           <section>

@@ -155,6 +155,11 @@ def main() -> None:
 
     if not args.input.exists():
         raise SystemExit(f"找不到檔案：{args.input}")
+    if args.input.is_dir():
+        raise SystemExit(
+            "InputPath 目前是資料夾，不是影片檔。請指定完整影片檔案路徑，例如："
+            f"{args.input}\\AAAA.MP4"
+        )
 
     output_dir = (args.output_dir or args.input.parent).expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
